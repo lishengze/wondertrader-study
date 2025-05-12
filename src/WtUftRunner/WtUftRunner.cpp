@@ -57,27 +57,42 @@ void WtUftRunner::init(const std::string& filename)
 	WtHelper::setInstDir(getBinDir());
 }
 
+/**
+ * @brief 配置 WtUftRunner 的运行环境，加载配置文件并初始化各组件
+ * 
+ * 该函数从指定文件加载配置信息，依据配置内容初始化基础数据、运行引擎、
+ * 数据管理、共享域、行情通道、交易通道以及 UFT 策略等组件。
+ * 
+ * @param filename 配置文件的路径
+ * @return bool 配置成功返回 true，失败返回 false
+ */
 bool WtUftRunner::config(const std::string& filename)
 {
+	// 从指定文件加载配置信息
 	_config = WTSCfgLoader::load_from_file(filename.c_str());
+	// 若配置文件加载失败，记录错误日志并返回 false
 	if(_config == NULL)
 	{
 		WTSLogger::error("Loading config file {} failed", filename);
 		return false;
 	}
 
-	//基础数据文件
+	// 基础数据文件配置
 	WTSVariant* cfgBF = _config->get("basefiles");
+	// 加载交易会话信息
 	if (cfgBF->get("session"))
 		_bd_mgr.loadSessions(cfgBF->getCString("session"));
 
+	// 加载商品信息
 	WTSVariant* cfgItem = cfgBF->get("commodity");
 	if (cfgItem)
 	{
+		// 若配置为字符串类型，直接加载商品信息
 		if (cfgItem->type() == WTSVariant::VT_String)
 		{
 			_bd_mgr.loadCommodities(cfgItem->asCString());
 		}
+		// 若配置为数组类型，遍历数组加载商品信息
 		else if (cfgItem->type() == WTSVariant::VT_Array)
 		{
 			for (uint32_t i = 0; i < cfgItem->size(); i++)
@@ -87,13 +102,16 @@ bool WtUftRunner::config(const std::string& filename)
 		}
 	}
 
+	// 加载合约信息
 	cfgItem = cfgBF->get("contract");
 	if (cfgItem)
 	{
+		// 若配置为字符串类型，直接加载合约信息
 		if (cfgItem->type() == WTSVariant::VT_String)
 		{
 			_bd_mgr.loadContracts(cfgItem->asCString());
 		}
+		// 若配置为数组类型，遍历数组加载合约信息
 		else if (cfgItem->type() == WTSVariant::VT_Array)
 		{
 			for (uint32_t i = 0; i < cfgItem->size(); i++)
@@ -103,33 +121,40 @@ bool WtUftRunner::config(const std::string& filename)
 		}
 	}
 
+	// 加载节假日信息
 	if (cfgBF->get("holiday"))
 		_bd_mgr.loadHolidays(cfgBF->getCString("holiday"));
 
-	//初始化运行环境
+	// 初始化运行引擎
 	initEngine();
 
-	//初始化数据管理
+	// 初始化数据管理
 	initDataMgr();
 
+	// 配置共享域
 	if (_config->has("share_domain"))
 	{
 		WTSVariant* cfg = _config->get("share_domain");
+		// 设置共享管理器的引擎指针
 		ShareManager::self().set_engine(&_uft_engine);
-
+		// 初始化共享管理器模块
 		ShareManager::self().initialize(cfg->getCString("module"));
+		// 初始化共享域名称
 		ShareManager::self().init_domain(cfg->getCString("name"));
 	}
 
+	// 初始化操作策略管理器
 	if(!_act_policy.init(_config->getCString("bspolicy")))
 	{
+		// 若初始化失败，记录错误日志
 		WTSLogger::error("ActionPolicyMgr init failed, please check config");
 	}
 
-	//初始化行情通道
+	// 初始化行情通道
 	WTSVariant* cfgParser = _config->get("parsers");
 	if (cfgParser)
 	{
+		// 若配置为字符串类型，尝试从文件加载行情通道配置
 		if (cfgParser->type() == WTSVariant::VT_String)
 		{
 			const char* filename = cfgParser->asCString();
@@ -139,30 +164,35 @@ bool WtUftRunner::config(const std::string& filename)
 				WTSVariant* var = WTSCfgLoader::load_from_file(filename);
 				if(var)
 				{
+					// 若加载成功，初始化行情通道
 					if (!initParsers(var->get("parsers")))
 						WTSLogger::error("Loading parsers failed");
 					var->release();
 				}
 				else
 				{
+					// 若加载失败，记录错误日志
 					WTSLogger::error("Loading parser config {} failed", filename);
 				}
 			}
 			else
 			{
+				// 若文件不存在，记录错误日志
 				WTSLogger::error("Parser configuration {} not exists", filename);
 			}
 		}
+		// 若配置为数组类型，直接初始化行情通道
 		else if (cfgParser->type() == WTSVariant::VT_Array)
 		{
 			initParsers(cfgParser);
 		}
 	}
 
-	//初始化交易通道
+	// 初始化交易通道
 	WTSVariant* cfgTraders = _config->get("traders");
 	if (cfgTraders)
 	{
+		// 若配置为字符串类型，尝试从文件加载交易通道配置
 		if (cfgTraders->type() == WTSVariant::VT_String)
 		{
 			const char* filename = cfgTraders->asCString();
@@ -172,26 +202,31 @@ bool WtUftRunner::config(const std::string& filename)
 				WTSVariant* var = WTSCfgLoader::load_from_file(filename);
 				if (var)
 				{
+					// 若加载成功，初始化交易通道
 					if (!initTraders(var->get("traders")))
 						WTSLogger::error("Loading traders failed");
 					var->release();
 				}
 				else
 				{
+					// 若加载失败，记录错误日志
 					WTSLogger::error("Loading trader config {} failed", filename);
 				}
 			}
 			else
 			{
+				// 若文件不存在，记录错误日志
 				WTSLogger::error("Trader configuration {} not exists", filename);
 			}
 		}
+		// 若配置为数组类型，直接初始化交易通道
 		else if (cfgTraders->type() == WTSVariant::VT_Array)
 		{
 			initTraders(cfgTraders);
 		}
 	}
 
+	// 初始化 UFT 策略
 	initUftStrategies();
 	
 	return true;

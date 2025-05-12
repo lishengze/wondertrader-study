@@ -126,72 +126,95 @@ void WtUftRtTicker::on_tick(WTSTickData* curTick)
 	_next_check_time = TimeUtils::getLocalTimeNow() + left_ticks;
 }
 
+/**
+ * @brief 启动 WtUftRtTicker 的运行线程
+ * 
+ * 该函数会初始化一些必要的时间和交易日期信息，然后启动一个新线程，
+ * 在新线程中不断检查当前时间，根据交易时间和分钟线闭合情况触发相应事件。
+ */
 void WtUftRtTicker::run()
 {
+	// 如果线程已经存在，直接返回，避免重复启动
 	if (_thrd)
 		return;
 
+	// 调用引擎的初始化回调函数
 	_engine->on_init();
 
+	// 计算当前的交易日日期
 	uint32_t curTDate = _engine->get_basedata_mgr()->calcTradingDate(_s_info->id(), _engine->get_date(), _engine->get_min_time(), true);
+	// 设置引擎的交易日日期
 	_engine->set_trading_date(curTDate);
 
+	// 调用引擎的交易会话开始回调函数
 	_engine->on_session_begin();
 
-	//先检查当前时间, 如果大于
+	// 计算当前时间相对于交易时段的偏移时间
 	uint32_t offTime = _s_info->offsetTime(_engine->get_min_time(), true);
 
+	// 创建一个新线程
 	_thrd.reset(new StdThread([this, offTime](){
+		// 当未停止运行时，持续循环
 		while (!_stopped)
 		{
+			// 检查当前时间是否在交易时间内
 			if (_time != UINT_MAX && _s_info->isInTradingTime(_time / 100000, true))
 			{
+				// 短暂休眠 10 毫秒
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				// 获取当前本地时间
 				uint64_t now = TimeUtils::getLocalTimeNow();
 
+				// 检查是否到达下一次检查时间，并且上一次触发的位置小于当前位置
 				if (now >= _next_check_time && _last_emit_pos < _cur_pos)
 				{
-					//触发数据回放模块
+					// 加锁，确保线程安全
 					StdUniqueLock lock(_mtx);
 
-					//优先修改时间标记
+					// 更新上一次触发的位置为当前位置
 					_last_emit_pos = _cur_pos;
 
+					// 将当前位置转换为对应的分钟时间
 					uint32_t thisMin = _s_info->minuteToTime(_cur_pos);
+					// 更新当前时间
 					_time = thisMin;
 
-					//如果thisMin是0, 说明换日了
-					//这里是本地计时导致的换日, 说明日期其实还是老日期, 要自动+1
-					//同时因为时间是235959xxx, 所以也要手动置为0
+					// 如果当前分钟时间为 0，说明换日了
 					if (thisMin == 0)
 					{
+						// 记录上一天的日期
 						uint32_t lastDate = _date;
+						// 获取下一天的日期
 						_date = TimeUtils::getNextDate(_date);
+						// 将时间置为 0
 						_time = 0;
+						// 记录日期变更信息
 						WTSLogger::info("Data automatically changed at time 00:00: {} -> {}", lastDate, _date);
 					}
 
+					// 记录分钟线自动闭合信息
 					WTSLogger::info("Minute bar {}.{:04d} closed automatically", _date, thisMin);
-					//if (_store)
-					//	_store->onMinuteEnd(_date, thisMin);
-
+					// 调用引擎的分钟线结束回调函数
 					_engine->on_minute_end(_date, thisMin);
 
+					// 计算当前分钟时间相对于交易时段的偏移分钟数
 					uint32_t offMin = _s_info->offsetTime(thisMin, true);
+					// 如果偏移分钟数大于等于交易结束时间，说明交易会话结束
 					if (offMin >= _s_info->getCloseTime(true))
 					{
+						// 调用引擎的交易会话结束回调函数
 						_engine->on_session_end();
 					}
 
-					//145959000
+					// 更新引擎的日期和时间信息
 					if (_engine)
 						_engine->set_date_time(_date, thisMin, 0);
 				}
 			}
-			else //if (offTime >= _s_info->getOpenTime(true) && offTime <= _s_info->getCloseTime(true))
+			else // 当前不在交易时间内
 			{
-				//不在交易时间，则休息10s再进行检查
-				//因为这个逻辑是处理分钟线的，所以休盘时间休息10s，不会引起数据踏空的问题
+				// 不在交易时间，则休息 10 秒再进行检查
+				// 因为这个逻辑是处理分钟线的，所以休盘时间休息 10 秒，不会引起数据踏空的问题
 				std::this_thread::sleep_for(std::chrono::seconds(10));
 			}
 			

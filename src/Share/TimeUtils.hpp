@@ -123,18 +123,35 @@ public:
      * @date    当前日期，格式如20220309
      * @time    当前时间，精确到毫秒，格式如103029500
      */
+	/**
+	 * @brief 获取当前日期和时间
+	 * 
+	 * 该函数用于获取当前的日期和带毫秒的时间，通过引用参数返回结果。
+	 * 日期格式为 YYYYMMDD，时间格式为 HHMMSSsss（精确到毫秒）。
+	 * 
+	 * @param date 用于存储当前日期的引用，格式为 YYYYMMDD
+	 * @param time 用于存储当前时间的引用，格式为 HHMMSSsss（精确到毫秒）
+	 */
 	static inline void getDateTime(uint32_t &date, uint32_t &time)
 	{
+		// 获取当前本地时间，精确到毫秒
 		uint64_t ltime = getLocalTimeNow();
+		// 提取秒级时间
 		time_t now = ltime / 1000;
+		// 提取毫秒部分
 		uint32_t millitm = ltime % 1000;
 
+		// 将秒级时间转换为本地时间结构体
 		tm * tNow = localtime(&now);
 
+		// 计算当前日期，格式为 YYYYMMDD
 		date = (tNow->tm_year+1900)*10000 + (tNow->tm_mon+1)*100 + tNow->tm_mday;
 		
+		// 计算当前时间，格式为 HHMMSS
 		time = tNow->tm_hour*10000 + tNow->tm_min*100 + tNow->tm_sec;
+		// 将时间转换为 HHMMSS000 格式
 		time *= 1000;
+		// 添加毫秒部分，得到 HHMMSSsss 格式的时间
 		time += millitm;
 	}
 
