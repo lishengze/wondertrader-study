@@ -320,11 +320,14 @@ private:
 
 private:
 	uint32_t		_context_id;
-	WtUftEngine*	_engine;
-	TraderAdapter*	_trader;
+
 	uint32_t		_tradingday;
 
 	UftStrategy*	_strategy;
+
+	/// 外部业务接口;
+	WtUftEngine*	_engine;
+	TraderAdapter*	_trader;	
 };
 
 NS_WTP_END

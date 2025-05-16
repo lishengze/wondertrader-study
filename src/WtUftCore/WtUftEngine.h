@@ -125,6 +125,10 @@ public:
 	void sub_order_detail(uint32_t sid, const char* stdCode);
 	void sub_transaction(uint32_t sid, const char* stdCode);
 
+	typedef wt_hashset<uint32_t> SubList;
+	typedef wt_hashmap<std::string, SubList>	StraSubMap;
+	typedef wt_hashmap<uint32_t, UftContextPtr> ContextMap;
+
 private:
 	uint32_t		_cur_date;	//当前日期
 	uint32_t		_cur_time;		//当前时间, 是1分钟线时间, 比如0900, 这个时候的1分钟线是0901, _cur_time也就是0901, 这个是为了CTA里面方便
@@ -135,20 +139,6 @@ private:
 	IBaseDataMgr*	_base_data_mgr;	//基础数据管理器
 	WtUftDtMgr*		_data_mgr;		//数据管理器
 
-	//By Wesley @ 2022.02.07
-	//tick数据订阅项，first是contextid，second是订阅选项，0-原始订阅，1-前复权，2-后复权
-	typedef wt_hashset<uint32_t> SubList;
-	typedef wt_hashmap<std::string, SubList>	StraSubMap;
-	StraSubMap		_tick_sub_map;	//tick数据订阅表
-	StraSubMap		_ordque_sub_map;	//委托队列订阅表
-	StraSubMap		_orddtl_sub_map;	//委托明细订阅表
-	StraSubMap		_trans_sub_map;		//成交明细订阅表
-	StraSubMap		_bar_sub_map;	//K线数据订阅表	
-
-	TraderAdapterMgr*	_adapter_mgr;
-
-	typedef wt_hashmap<uint32_t, UftContextPtr> ContextMap;
-	ContextMap		_ctx_map;
 
 	WtUftRtTicker*	_tm_ticker;
 	WTSVariant*		_cfg;
@@ -156,6 +146,21 @@ private:
 	bool			_dependent;	//子策略独立记账
 
 	EventNotifier*	_notifier;
+
+
+	///----------- 业务强相关类型 -----------///
+	//By Wesley @ 2022.02.07
+	//tick数据订阅项，first是contextid，second是订阅选项，0-原始订阅，1-前复权，2-后复权
+	StraSubMap		_tick_sub_map;	//tick数据订阅表
+	StraSubMap		_ordque_sub_map;	//委托队列订阅表
+	StraSubMap		_orddtl_sub_map;	//委托明细订阅表
+	StraSubMap		_trans_sub_map;		//成交明细订阅表
+	StraSubMap		_bar_sub_map;	//K线数据订阅表	
+
+	/// 交易与策略接口;
+	TraderAdapterMgr*	_adapter_mgr;
+	ContextMap			_ctx_map;
+
 };
 
 NS_WTP_END

@@ -45,7 +45,8 @@ public:
 
 private:
 	WTSTickData*	_last_tick;
-	IUftStraCtx*	_ctx;
+	IUftStraCtx*	_ctx;		// 唯一的策略上下文
+
 	std::string		_code;
 	uint32_t		_secs;
 	uint32_t		_freq;

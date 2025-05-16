@@ -59,20 +59,18 @@ public:
 
 private:
 	WTSVariant*			_config;
-	TraderAdapterMgr	_traders;
-	ParserAdapterMgr	_parsers;
-
-	WtUftEngine			_uft_engine;
-
-	WtUftDtMgr			_data_mgr;
-
 	WTSBaseDataMgr		_bd_mgr;
 	EventNotifier		_notifier;
+	WtUftDtMgr			_data_mgr;
+	ActionPolicyMgr		_act_policy;
+	bool				_to_exit;
 
+	///------------- 业务相关类型 -----------------///
+	TraderAdapterMgr	_traders;
+	ParserAdapterMgr	_parsers;
+	WtUftEngine			_uft_engine;
 	UftStrategyMgr		_uft_stra_mgr;
 
-	ActionPolicyMgr		_act_policy;
 
-	bool				_to_exit;
 };
 

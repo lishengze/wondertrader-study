@@ -88,7 +88,9 @@ private:
 	ExchgFilter			_exchg_filter;
 	ExchgFilter			_code_filter;
 	IBaseDataMgr*		_bd_mgr;
-	IParserStub*		_stub;
+
+	IParserStub*		_stub; 	// 外部的业务接口;
+
 	WTSVariant*			_cfg;
 	std::string			_id;
 };
